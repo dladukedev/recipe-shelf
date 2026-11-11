@@ -1,0 +1,9 @@
+{
+  "name": "recipe-shelf-assets",
+  "private": true,
+  "scripts": {
+    "build:css": "node scripts/build_css.cjs",
+    "watch:css": "node scripts/build_css.cjs --watch",
+    "check": "node scripts/build_css.cjs --check && node scripts/check_client.cjs"
+  }
+}

@@ -1,0 +1,13 @@
+# Only application build inputs belong in the container build context.
+**
+!Cargo.toml
+!Cargo.lock
+!src/
+!src/**
+!templates/
+!templates/**
+!static/
+!static/**
+!scripts/
+scripts/**
+!scripts/render_pdf.py

@@ -1,0 +1,37 @@
+# Build output and installed dependencies.
+/target/
+/node_modules/
+/.venv/
+/venv/
+__pycache__/
+*.py[cod]
+
+# Local application state, including SQLite journals and backups.
+/data/
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+
+# Local environment and workspace credentials/configuration.
+.env
+.env.*
+!.env.example
+!.env.sample
+/.aws/
+/.codex/
+/.agents/
+
+# Logs and editor/OS temporary files.
+*.log
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Keep Cargo.lock, templates, and embedded static assets tracked.

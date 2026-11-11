@@ -1,0 +1,30 @@
+# {{{title}}}
+{{#description}}
+{{{description}}}
+{{/description}}
+{{#author}}By {{{author}}}
+
+{{/author}}{{#yield}}**Yield:** {{{yield}}}
+
+{{/yield}}{{#categories}}**Category:** {{{.}}}
+
+{{/categories}}{{#cuisines}}**Cuisine:** {{{.}}}
+
+{{/cuisines}}{{#prep_time}}**Prep:** {{{prep_time}}}
+
+{{/prep_time}}{{#cook_time}}**Cook:** {{{cook_time}}}
+
+{{/cook_time}}{{#total_time}}**Total:** {{{total_time}}}
+
+{{/total_time}}{{#ingredients}}## Ingredients
+
+{{#ingredient_lines}}- {{{.}}}
+{{/ingredient_lines}}
+
+{{/ingredients}}{{#has_instructions}}## Method
+
+{{/has_instructions}}{{#steps}}{{number}}. {{{text}}}
+
+{{/steps}}{{#notes}}> {{{.}}}
+
+{{/notes}}

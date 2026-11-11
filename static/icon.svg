@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <title>Recipe Shelf</title>
+  <desc>Capital R from Charm Regular by Cadson Demak. Copyright 2018 The Charm Project Authors. SIL Open Font License 1.1; see licenses/Charm-OFL.txt.</desc>
+  <style>
+    :root { --foreground: #111; --background: #fff; --surface-mix: 0%; --line-mix: 14%; }
+    .box {
+      fill: color-mix(in srgb, var(--foreground) var(--surface-mix), var(--background));
+      stroke: color-mix(in srgb, var(--foreground) var(--line-mix), var(--background));
+    }
+    .letter { fill: var(--foreground); }
+    @media (prefers-color-scheme: dark) {
+      :root { --foreground: #f2f2f2; --background: #161616; --surface-mix: 4.5%; --line-mix: 19%; }
+    }
+  </style>
+  <rect class="box" x="1" y="1" width="62" height="62" rx="10" stroke-width="2"/>
+  <path class="letter" transform="translate(13.20588 52.41176) scale(0.0588235 -0.0588235)" d="M405 66 345 228Q334 259 322.5 274.0Q311 289 289.5 296.5Q268 304 228 304L196 110Q191 84 177 68V67Q182 65 192.5 61.5Q203 58 212 58Q225 58 237.0 63.5Q249 69 253 69Q259 69 259 63Q259 54 247 41Q209 0 186 0Q178 0 152 8Q123 17 112 17Q96 17 79.5 8.5Q63 0 61 0Q56 0 56 10Q56 21 61.0 30.0Q66 39 78 51Q101 72 108.0 81.5Q115 91 119.0 107.0Q123 123 131 172L192 528Q196 553 226.5 578.0Q257 603 281 603Q291 603 291 598Q291 595 281.5 581.5Q272 568 267 534L239 353Q252 350 286 350Q357 350 397.5 393.5Q438 437 438 511Q438 650 285 650Q163 650 84 562Q76 553 70.0 547.0Q64 541 58 541Q52 541 52 548Q52 554 53 559Q62 594 98.0 627.5Q134 661 191.0 682.5Q248 704 317 704Q410 704 462.5 662.0Q515 620 515 543Q515 466 465.5 407.0Q416 348 339 325Q393 308 417 246L467 110Q477 85 487.5 73.5Q498 62 515 62Q539 62 562 88Q566 93 570.5 99.0Q575 105 579 105Q587 105 587 92Q587 68 571.5 44.0Q556 20 532.0 5.0Q508 -10 484 -10Q458 -10 438.5 8.5Q419 27 405 66Z"/>
+</svg>

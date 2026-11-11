@@ -1,0 +1,30 @@
+FROM docker.io/library/rust:1.98-bookworm AS builder
+WORKDIR /build
+COPY Cargo.toml Cargo.lock ./
+COPY src/ ./src/
+COPY templates/ ./templates/
+COPY static/ ./static/
+COPY scripts/render_pdf.py ./scripts/render_pdf.py
+RUN cargo build --release --locked
+
+FROM docker.io/library/debian:bookworm-slim AS runtime
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends weasyprint fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+RUN /usr/bin/python3 -c 'from weasyprint import HTML; assert HTML(string="<p>PDF renderer ready</p>").write_pdf().startswith(b"%PDF-")'
+RUN useradd --system --uid 10001 --home-dir /nonexistent --shell /usr/sbin/nologin recipe-shelf \
+    && mkdir -p /data /recipes \
+    && chown recipe-shelf:recipe-shelf /data
+COPY --from=builder /build/target/release/recipe-shelf /usr/local/bin/recipe-shelf
+ENV HOST=0.0.0.0 \
+    PORT=3000 \
+    DATABASE_PATH=/data/recipes.sqlite \
+    PDF_PYTHON=/usr/bin/python3
+LABEL org.opencontainers.image.title="Recipe Shelf" \
+    org.opencontainers.image.description="A self-hosted browser for read-only TOML recipes"
+# Embed static/icon.svg for Dozzle; regenerate this data URI when the icon changes.
+LABEL dev.dozzle.icon="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0Ij4KICA8dGl0bGU+UmVjaXBlIFNoZWxmPC90aXRsZT4KICA8ZGVzYz5DYXBpdGFsIFIgZnJvbSBDaGFybSBSZWd1bGFyIGJ5IENhZHNvbiBEZW1hay4gQ29weXJpZ2h0IDIwMTggVGhlIENoYXJtIFByb2plY3QgQXV0aG9ycy4gU0lMIE9wZW4gRm9udCBMaWNlbnNlIDEuMTsgc2VlIGxpY2Vuc2VzL0NoYXJtLU9GTC50eHQuPC9kZXNjPgogIDxzdHlsZT4KICAgIDpyb290IHsgLS1mb3JlZ3JvdW5kOiAjMTExOyAtLWJhY2tncm91bmQ6ICNmZmY7IC0tc3VyZmFjZS1taXg6IDAlOyAtLWxpbmUtbWl4OiAxNCU7IH0KICAgIC5ib3ggewogICAgICBmaWxsOiBjb2xvci1taXgoaW4gc3JnYiwgdmFyKC0tZm9yZWdyb3VuZCkgdmFyKC0tc3VyZmFjZS1taXgpLCB2YXIoLS1iYWNrZ3JvdW5kKSk7CiAgICAgIHN0cm9rZTogY29sb3ItbWl4KGluIHNyZ2IsIHZhcigtLWZvcmVncm91bmQpIHZhcigtLWxpbmUtbWl4KSwgdmFyKC0tYmFja2dyb3VuZCkpOwogICAgfQogICAgLmxldHRlciB7IGZpbGw6IHZhcigtLWZvcmVncm91bmQpOyB9CiAgICBAbWVkaWEgKHByZWZlcnMtY29sb3Itc2NoZW1lOiBkYXJrKSB7CiAgICAgIDpyb290IHsgLS1mb3JlZ3JvdW5kOiAjZjJmMmYyOyAtLWJhY2tncm91bmQ6ICMxNjE2MTY7IC0tc3VyZmFjZS1taXg6IDQuNSU7IC0tbGluZS1taXg6IDE5JTsgfQogICAgfQogIDwvc3R5bGU+CiAgPHJlY3QgY2xhc3M9ImJveCIgeD0iMSIgeT0iMSIgd2lkdGg9IjYyIiBoZWlnaHQ9IjYyIiByeD0iMTAiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxwYXRoIGNsYXNzPSJsZXR0ZXIiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDEzLjIwNTg4IDUyLjQxMTc2KSBzY2FsZSgwLjA1ODgyMzUgLTAuMDU4ODIzNSkiIGQ9Ik00MDUgNjYgMzQ1IDIyOFEzMzQgMjU5IDMyMi41IDI3NC4wUTMxMSAyODkgMjg5LjUgMjk2LjVRMjY4IDMwNCAyMjggMzA0TDE5NiAxMTBRMTkxIDg0IDE3NyA2OFY2N1ExODIgNjUgMTkyLjUgNjEuNVEyMDMgNTggMjEyIDU4UTIyNSA1OCAyMzcuMCA2My41UTI0OSA2OSAyNTMgNjlRMjU5IDY5IDI1OSA2M1EyNTkgNTQgMjQ3IDQxUTIwOSAwIDE4NiAwUTE3OCAwIDE1MiA4UTEyMyAxNyAxMTIgMTdROTYgMTcgNzkuNSA4LjVRNjMgMCA2MSAwUTU2IDAgNTYgMTBRNTYgMjEgNjEuMCAzMC4wUTY2IDM5IDc4IDUxUTEwMSA3MiAxMDguMCA4MS41UTExNSA5MSAxMTkuMCAxMDcuMFExMjMgMTIzIDEzMSAxNzJMMTkyIDUyOFExOTYgNTUzIDIyNi41IDU3OC4wUTI1NyA2MDMgMjgxIDYwM1EyOTEgNjAzIDI5MSA1OThRMjkxIDU5NSAyODEuNSA1ODEuNVEyNzIgNTY4IDI2NyA1MzRMMjM5IDM1M1EyNTIgMzUwIDI4NiAzNTBRMzU3IDM1MCAzOTcuNSAzOTMuNVE0MzggNDM3IDQzOCA1MTFRNDM4IDY1MCAyODUgNjUwUTE2MyA2NTAgODQgNTYyUTc2IDU1MyA3MC4wIDU0Ny4wUTY0IDU0MSA1OCA1NDFRNTIgNTQxIDUyIDU0OFE1MiA1NTQgNTMgNTU5UTYyIDU5NCA5OC4wIDYyNy41UTEzNCA2NjEgMTkxLjAgNjgyLjVRMjQ4IDcwNCAzMTcgNzA0UTQxMCA3MDQgNDYyLjUgNjYyLjBRNTE1IDYyMCA1MTUgNTQzUTUxNSA0NjYgNDY1LjUgNDA3LjBRNDE2IDM0OCAzMzkgMzI1UTM5MyAzMDggNDE3IDI0Nkw0NjcgMTEwUTQ3NyA4NSA0ODcuNSA3My41UTQ5OCA2MiA1MTUgNjJRNTM5IDYyIDU2MiA4OFE1NjYgOTMgNTcwLjUgOTkuMFE1NzUgMTA1IDU3OSAxMDVRNTg3IDEwNSA1ODcgOTJRNTg3IDY4IDU3MS41IDQ0LjBRNTU2IDIwIDUzMi4wIDUuMFE1MDggLTEwIDQ4NCAtMTBRNDU4IC0xMCA0MzguNSA4LjVRNDE5IDI3IDQwNSA2NloiLz4KPC9zdmc+Cg=="
+VOLUME ["/data"]
+EXPOSE 3000
+USER 10001:10001
+ENTRYPOINT ["/usr/local/bin/recipe-shelf"]

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{title}}</title>
+  <style>
+    @page { size: A4; margin: 18mm; @bottom-right { content: counter(page); font: 9pt sans-serif; color: #666; } }
+    body { font: 11pt/1.5 "DejaVu Sans", sans-serif; color: #222; }
+    h1 { font-size: 24pt; line-height: 1.15; margin: 0 0 8mm; }
+    h2 { font-size: 14pt; margin: 7mm 0 3mm; border-bottom: 1px solid #bbb; padding-bottom: 2mm; }
+    h1, h2 { break-after: avoid; }
+    .metadata { font-size: 10pt; margin-bottom: 6mm; }
+    .metadata p { margin: 1mm 0; }
+    .description, .ingredients, .note, li { white-space: pre-wrap; overflow-wrap: break-word; }
+    li { padding-left: 2mm; margin-bottom: 3mm; }
+    ol { padding-left: 6mm; }
+  </style>
+</head>
+<body>
+  <h1>{{title}}</h1>
+  {{#description}}<p class="description">{{description}}</p>{{/description}}
+  <div class="metadata">
+    {{#author}}<p>By {{author}}</p>{{/author}}
+    {{#yield}}<p>Yield: {{yield}}</p>{{/yield}}
+    {{#categories}}<p>Category: {{.}}</p>{{/categories}}
+    {{#cuisines}}<p>Cuisine: {{.}}</p>{{/cuisines}}
+    {{#prep_time}}<p>Prep: {{prep_time}}</p>{{/prep_time}}
+    {{#cook_time}}<p>Cook: {{cook_time}}</p>{{/cook_time}}
+    {{#total_time}}<p>Total: {{total_time}}</p>{{/total_time}}
+  </div>
+  {{#ingredients}}<h2>Ingredients</h2><div class="ingredients">{{ingredients}}</div>{{/ingredients}}
+  {{#has_instructions}}
+  <h2>Method</h2>
+  <ol>{{#instructions}}<li>{{.}}</li>{{/instructions}}</ol>
+  {{/has_instructions}}
+  {{#notes}}<p class="note"><strong>Note:</strong> {{.}}</p>{{/notes}}
+</body>
+</html>

@@ -1,0 +1,22 @@
+services:
+  recipe-shelf:
+    image: ${RECIPE_SHELF_IMAGE:-ghcr.io/dladukedev/recipe-shelf:latest}
+    ports:
+      - "3000:3000"
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3000"
+      DATABASE_PATH: /data/recipes.sqlite
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    volumes:
+      - recipe-shelf-data:/data
+      - type: bind
+        source: ${RECIPES_PATH:-./recipes}
+        target: /recipes
+        read_only: true
+        bind:
+          create_host_path: false
+    restart: unless-stopped
+
+volumes:
+  recipe-shelf-data:

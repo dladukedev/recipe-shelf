@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "Recipe Shelf",
+  "short_name": "Recipe Shelf",
+  "description": "Browse and export your personal recipe collection.",
+  "lang": "en",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f4f4",
+  "theme_color": "#f4f4f4",
+  "icons": [
+    {
+      "src": "/assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
