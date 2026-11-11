@@ -6,6 +6,7 @@ mod models;
 mod parsing;
 mod recipes;
 mod sessions;
+mod settings;
 mod storage;
 mod sync;
 mod templates;

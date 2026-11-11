@@ -4,7 +4,7 @@ use super::*;
 pub(in crate::web) async fn users_settings(cx: &Cx) -> topcoat::Result<impl View> {
     let user = require_web_admin(cx).await?;
     let actor = user.clone();
-    let people = db(cx, move |a| a.users(&actor))
+    let (people, require_login) = db(cx, move |a| Ok((a.users(&actor)?, a.require_login()?)))
         .await
         .map_err(server_error)?;
     let selection = &topcoat::router::query_params::<SelectionQuery>(cx)?
@@ -25,7 +25,7 @@ pub(in crate::web) async fn users_settings(cx: &Cx) -> topcoat::Result<impl View
         settings_frame(
             section: SettingsSection::Users,
             user: &user,
-            <div class="users-layout">
+            <div class="settings-stack">
                 <section class="panel">
                     <div class="panel-toolbar">
                         <h2>
@@ -51,7 +51,7 @@ pub(in crate::web) async fn users_settings(cx: &Cx) -> topcoat::Result<impl View
                                         }
                                     </strong>
                                     <p class="muted">
-                                        (if person.is_admin { "Administrator" } else { "Member" })
+                                        (if person.is_admin { "Admin" } else { "User" })
                                     </p>
                                 </div>
                                 <div class="button-row">
@@ -90,6 +90,27 @@ pub(in crate::web) async fn users_settings(cx: &Cx) -> topcoat::Result<impl View
                             </div>
                         }
                     </div>
+                </section>
+                <section class="panel">
+                    <h2>"Recipe access"</h2>
+                    <form class="stack-form" method="post" action=(href!(save_access_settings))>
+                        csrf_field()
+                        <label class="check-row" for="require-login">
+                            <input
+                                id="require-login"
+                                name="require_login"
+                                type="checkbox"
+                                value="true"
+                                checked=(require_login)
+                                aria-describedby="require-login-help"
+                            />
+                            "Require Login"
+                        </label>
+                        <p class="muted form-hint" id="require-login-help">
+                            "Require users to log in to view the recipe list and recipe details. When off, anyone who can reach this site can browse recipes."
+                        </p>
+                        <button class="button button-primary" type="submit">"Save access settings"</button>
+                    </form>
                 </section>
                 <dialog
                     id="user-dialog"
@@ -215,6 +236,27 @@ pub(in crate::web) async fn users_settings(cx: &Cx) -> topcoat::Result<impl View
             </div>
         )
     })
+}
+
+#[derive(Deserialize)]
+pub(in crate::web) struct AccessSettingsForm {
+    csrf: String,
+    require_login: Option<bool>,
+}
+
+#[page(POST "/settings/users/access")]
+pub(in crate::web) async fn save_access_settings(
+    cx: &Cx,
+    Form(form): Form<AccessSettingsForm>,
+) -> topcoat::Result<()> {
+    require_csrf(cx, &form.csrf)?;
+    let actor = require_admin(cx).await?;
+    db(cx, move |a| {
+        a.set_require_login(&actor, form.require_login.unwrap_or(false))
+    })
+    .await
+    .map_err(server_error)?;
+    Err(see_other(href!(users_settings).query([("saved", "1")]).resolve(cx)).into())
 }
 
 #[derive(Deserialize)]

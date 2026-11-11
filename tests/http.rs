@@ -157,7 +157,7 @@ async fn mobile_api_auth_search_pagination_and_revocation() {
 }
 
 #[tokio::test]
-async fn public_pages_redirect_and_static_assets_are_local() {
+async fn initial_setup_redirect_and_public_browsing_with_local_assets() {
     let temporary = tempfile::tempdir().unwrap();
     let app = App::open(&temporary.path().join("test.sqlite")).unwrap();
     let router = web::router(app.clone());
@@ -170,8 +170,11 @@ async fn public_pages_redirect_and_static_assets_are_local() {
     let response = router
         .handle(Request::builder().uri("/").body(Body::empty()).unwrap())
         .await;
-    assert!(response.status().is_redirection());
-    assert_eq!(response.headers()["location"], "/login");
+    assert_eq!(response.status().as_u16(), 200);
+    let bytes = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
+    let html = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(html.contains(">Login</a>"));
+    assert!(!html.contains("Account options"));
 
     for path in ["/assets/site.css", "/assets/theme.js"] {
         let response = router

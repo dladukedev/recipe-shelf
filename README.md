@@ -33,6 +33,16 @@ Open the site in your browser and create the initial administrator account. Unde
 
 Recipe files are mounted read-only. Syncing or removing a folder in Recipe Shelf never changes your source files.
 
+## Access levels
+
+- **Admin:** All features, including folder syncing, user management, and export templates.
+- **User:** Recipe list and details, recipe exports (including Export all), and basic settings (appearance and password).
+- **None (signed out):** Recipe list and details, with a **Login** button instead of the account menu. Settings and exports require login.
+
+By default, after initial setup, anyone who can reach the site can browse the recipe collection. Administrators create and manage user accounts under **Settings → User management**.
+
+Administrators can enable **Require Login** under **Settings → User management** to restrict the recipe list and details to signed-in users. It is off by default. Settings and exports always require login.
+
 ## Health checks
 
 `GET /health` returns HTTP `200` with `{"status":"ok"}` when the web server is responding. It requires no authentication and works before initial setup. This is a liveness check; it does not check the database or recipe folders.

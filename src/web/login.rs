@@ -22,9 +22,13 @@ pub(super) fn login_form<'a>(
         Child::new(view! {
             cx =>
             <section class="narrow-card auth-card">
-                <p class="eyebrow">"Recipe Shelf"</p>
+                if action == "/setup" {
+                    <p class="eyebrow">"Recipe Shelf"</p>
+                }
                 <h1>(heading)</h1>
-                <p class="muted">(message)</p>
+                if !message.is_empty() {
+                    <p class="muted">(message)</p>
+                }
                 if feedback.password.as_deref() == Some("changed") {
                     snackbar(
                         message: "Password changed. Sign in with your new password."
@@ -78,11 +82,6 @@ pub(super) fn login_form<'a>(
                         })
                     </button>
                 </form>
-                if action == "/login" {
-                    <p class="form-footnote">
-                        "Your account is managed by the collection administrator."
-                    </p>
-                }
             </section>
         }),
         false,
@@ -129,13 +128,7 @@ pub(super) async fn login_get(cx: &Cx) -> topcoat::Result<impl View> {
     if db(cx, |a| a.needs_setup()).await.map_err(server_error)? {
         return Err(redirect(href!(crate::web::login::setup_get).resolve(cx)).into());
     }
-    login_form(
-        cx,
-        "Sign in",
-        "Welcome back",
-        "Sign in to browse your recipe collection.",
-        "/login",
-    )
+    login_form(cx, "Sign in", "Welcome back", "", "/login")
 }
 #[page(POST "/login")]
 pub(super) async fn login_post(cx: &Cx, Form(form): Form<Credentials>) -> topcoat::Result<()> {

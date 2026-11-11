@@ -980,3 +980,229 @@ async fn saved_and_draft_previews_select_recipes_without_granting_template_acces
         403
     );
 }
+
+#[tokio::test]
+async fn require_login_is_persistent_admin_only_and_controls_recipe_access() {
+    let temporary = tempfile::tempdir().unwrap();
+    let db_path = temporary.path().join("test.sqlite");
+    let app = App::open(&db_path).unwrap();
+    let admin = app.setup("admin", "test-password-123").unwrap();
+    let user = app
+        .create_user(&admin, "reader", "reader-password-123", false)
+        .unwrap();
+    assert!(!app.require_login().unwrap());
+    assert!(app.set_require_login(&user, true).is_err());
+    let recipes = temporary.path().join("recipes");
+    std::fs::create_dir(&recipes).unwrap();
+    std::fs::write(recipes.join("bread.toml"), "title = 'Bread'\n").unwrap();
+    app.add_folder(&admin, recipes.to_str().unwrap()).unwrap();
+    app.sync(&admin).unwrap();
+    let id = app.recipes("", 1, 0).unwrap()[0].id;
+    let detail = format!("/recipes/{id}");
+    let router = web::router(app.clone());
+    let mut owner = Browser::default();
+    owner.cookies.insert(
+        "recipe_session".into(),
+        app.login("admin", "test-password-123").unwrap().token,
+    );
+    let mut reader = Browser::default();
+    reader.cookies.insert(
+        "recipe_session".into(),
+        app.login("reader", "reader-password-123").unwrap().token,
+    );
+    let mut guest = Browser::default();
+    let (_, html, _) = owner.send(&router, "GET", "/settings/users", &[]).await;
+    assert!(html.contains("Require Login"));
+    assert!(html.contains("name=\"require_login\""));
+    let csrf = owner.cookies["recipe_csrf"].clone();
+    let (status, _, _) = owner
+        .send(
+            &router,
+            "POST",
+            "/settings/users/access",
+            &[("csrf", "invalid"), ("require_login", "true")],
+        )
+        .await;
+    assert_eq!(status, 403);
+    assert!(!app.require_login().unwrap());
+    for required in [true, false] {
+        let mut fields = vec![("csrf", csrf.as_str())];
+        if required {
+            fields.push(("require_login", "true"));
+        }
+        let (status, _, location) = owner
+            .send(&router, "POST", "/settings/users/access", &fields)
+            .await;
+        assert!((300..400).contains(&status));
+        assert_eq!(location.as_deref(), Some("/settings/users?saved=1"));
+        assert_eq!(app.require_login().unwrap(), required);
+        assert_eq!(
+            App::open(&db_path).unwrap().require_login().unwrap(),
+            required
+        );
+        let (_, html, _) = owner.send(&router, "GET", "/settings/users", &[]).await;
+        let input = html
+            .split("id=\"require-login\"")
+            .nth(1)
+            .unwrap()
+            .split('>')
+            .next()
+            .unwrap();
+        assert_eq!(input.contains("checked"), required);
+        for path in ["/", "/?q=Bread", detail.as_str()] {
+            let (status, html, location) = guest.send(&router, "GET", path, &[]).await;
+            if required {
+                assert!((300..400).contains(&status), "{path}: {status}");
+                assert_eq!(location.as_deref(), Some("/login"));
+                assert!(!html.contains("Bread"));
+            } else {
+                assert_eq!(status, 200);
+                assert!(html.contains("Bread"));
+                assert!(html.contains(">Login</a>"));
+            }
+            assert_eq!(reader.send(&router, "GET", path, &[]).await.0, 200);
+            assert_eq!(owner.send(&router, "GET", path, &[]).await.0, 200);
+        }
+        for browser in [&mut guest, &mut reader] {
+            browser.send(&router, "GET", "/login", &[]).await;
+            let csrf = browser.cookies["recipe_csrf"].clone();
+            let (status, _, _) = browser
+                .send(
+                    &router,
+                    "POST",
+                    "/settings/users/access",
+                    &[
+                        ("csrf", csrf.as_str()),
+                        ("require_login", if required { "false" } else { "true" }),
+                    ],
+                )
+                .await;
+            assert_eq!(
+                status,
+                if browser.cookies.contains_key("recipe_session") {
+                    403
+                } else {
+                    401
+                }
+            );
+            assert_eq!(app.require_login().unwrap(), required);
+        }
+    }
+}
+
+#[tokio::test]
+async fn three_access_levels_control_browsing_exports_and_settings() {
+    let temporary = tempfile::tempdir().unwrap();
+    let app = App::open(&temporary.path().join("test.sqlite")).unwrap();
+    let admin = app.setup("admin", "test-password-123").unwrap();
+    app.create_user(&admin, "reader", "reader-password-123", false)
+        .unwrap();
+    let recipes = temporary.path().join("recipes");
+    std::fs::create_dir(&recipes).unwrap();
+    std::fs::write(
+        recipes.join("bread.toml"),
+        "title = 'Bread'\ningredients = 'Flour'\n",
+    )
+    .unwrap();
+    app.add_folder(&admin, recipes.to_str().unwrap()).unwrap();
+    app.sync(&admin).unwrap();
+    let id = app.recipes("", 1, 0).unwrap()[0].id;
+    let detail = format!("/recipes/{id}");
+    let router = web::router(app.clone());
+
+    for role in ["None", "User", "Admin"] {
+        let mut browser = Browser::default();
+        if role != "None" {
+            let (username, password) = if role == "Admin" {
+                ("admin", "test-password-123")
+            } else {
+                ("reader", "reader-password-123")
+            };
+            let login = app.login(username, password).unwrap();
+            browser.cookies.insert("recipe_session".into(), login.token);
+        }
+        for path in ["/", "/?q=Bread&sort=az&limit=1", detail.as_str()] {
+            let (status, html, _) = browser.send(&router, "GET", path, &[]).await;
+            assert_eq!(status, 200, "{role} {path}: {html}");
+            assert!(html.contains("Bread"));
+            assert_eq!(html.contains(">Login</a>"), role == "None");
+            assert_eq!(html.contains("Account options"), role != "None");
+            if path == detail {
+                assert_eq!(html.contains("Export this recipe"), role != "None");
+            }
+        }
+        for path in ["/settings", "/exports"] {
+            let (status, html, location) = browser.send(&router, "GET", path, &[]).await;
+            if role == "None" {
+                assert!((300..400).contains(&status), "{path}: {status}");
+                assert_eq!(location.as_deref(), Some("/login"));
+            } else {
+                assert_eq!(status, 200, "{role} {path}: {html}");
+                if path == "/settings" {
+                    assert_eq!(html.contains("/settings/folders"), role == "Admin");
+                    assert_eq!(html.contains("/settings/templates"), role == "Admin");
+                    assert_eq!(html.contains("/settings/users"), role == "Admin");
+                }
+            }
+        }
+        for path in [
+            "/settings/folders",
+            "/settings/templates",
+            "/settings/users",
+        ] {
+            let (status, _, location) = browser.send(&router, "GET", path, &[]).await;
+            match role {
+                "Admin" => assert_eq!(status, 200, "{path}"),
+                "User" => assert_eq!(status, 403, "{path}"),
+                _ => {
+                    assert!((300..400).contains(&status), "{path}: {status}");
+                    assert_eq!(location.as_deref(), Some("/login"));
+                }
+            }
+        }
+        for path in [
+            format!("/recipes/{id}/export/text"),
+            format!("/recipes/{id}/print"),
+            "/settings/export/text".into(),
+            "/exports/preview".into(),
+        ] {
+            // PDF rendering has its own availability checks in the export tests.
+            if role != "None" && path.ends_with("/print") {
+                continue;
+            }
+            let response = router
+                .handle(
+                    Request::builder()
+                        .uri(&path)
+                        .header("host", "localhost")
+                        .header(
+                            "cookie",
+                            browser
+                                .cookies
+                                .iter()
+                                .map(|(name, value)| format!("{name}={value}"))
+                                .collect::<Vec<_>>()
+                                .join("; "),
+                        )
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await;
+            let status = response.status().as_u16();
+            assert_eq!(
+                status,
+                if role == "None" { 401 } else { 200 },
+                "{role} {path}"
+            );
+        }
+    }
+
+    let mut stale = Browser::default();
+    stale
+        .cookies
+        .insert("recipe_session".into(), "expired-session".into());
+    let (status, html, _) = stale.send(&router, "GET", &detail, &[]).await;
+    assert_eq!(status, 200);
+    assert!(html.contains(">Login</a>"));
+    assert!(!html.contains("Export this recipe"));
+}

@@ -2,19 +2,11 @@ use super::*;
 
 #[page("/")]
 pub(super) async fn home(cx: &Cx) -> topcoat::Result<impl View> {
-    let user = match current_web_user(cx).await? {
-        Some(user) => user,
-        None => {
-            return Err(redirect(
-                if db(cx, |a| a.needs_setup()).await.map_err(server_error)? {
-                    "/setup"
-                } else {
-                    "/login"
-                },
-            )
-            .into());
-        }
-    };
+    let user = recipe_viewer(cx).await?;
+    let logged = user.is_some();
+    if user.is_none() && db(cx, |a| a.needs_setup()).await.map_err(server_error)? {
+        return Err(redirect(href!(crate::web::login::setup_get).resolve(cx)).into());
+    }
     let ListOptions {
         search,
         category,
@@ -129,7 +121,7 @@ pub(super) async fn home(cx: &Cx) -> topcoat::Result<impl View> {
                         >
                             "Clear search"
                         </a>
-                        if user.is_admin {
+                        if user.as_ref().is_some_and(|user| user.is_admin) {
                             <a
                                 class="text-link"
                                 href=(href!(crate::web::settings::folders::folders_settings))
@@ -181,13 +173,14 @@ pub(super) async fn home(cx: &Cx) -> topcoat::Result<impl View> {
                 }
             </div>
         }),
-        true,
+        logged,
     ))
 }
 
 #[page("/recipes/{recipe_id}")]
 pub(super) async fn recipe_page(cx: &Cx) -> topcoat::Result<impl View> {
-    let _user = require_web_user(cx).await?;
+    let user = recipe_viewer(cx).await?;
+    let logged = user.is_some();
     let id = *path_param::<RecipeId>(cx)?;
     let Some(recipe) = db(cx, move |a| a.recipe(id)).await.map_err(server_error)? else {
         return Err(not_found().into());
@@ -201,7 +194,9 @@ pub(super) async fn recipe_page(cx: &Cx) -> topcoat::Result<impl View> {
                 <header class="detail-header">
                     <div class="detail-title-row">
                         <h1>(recipe.data.title.as_str())</h1>
-                        export_menu(id: recipe.id)
+                        if logged {
+                            export_menu(id: recipe.id)
+                        }
                     </div>
                     <div class="tag-row">
                         for tag in recipe
@@ -292,6 +287,6 @@ pub(super) async fn recipe_page(cx: &Cx) -> topcoat::Result<impl View> {
                 }
             </article>
         }),
-        true,
+        logged,
     ))
 }

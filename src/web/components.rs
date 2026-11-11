@@ -18,7 +18,7 @@ async fn document(
     child: Child<'_>,
 ) -> topcoat::Result<impl View> {
     let path = topcoat::router::request::uri(cx).path();
-    let page_info = if path == "/" || path.starts_with("/recipes/") {
+    let page_info = if path == "/" || path == "/login" || path.starts_with("/recipes/") {
         None
     } else if path.starts_with("/settings") {
         Some("Settings".to_owned())
@@ -72,6 +72,10 @@ async fn document(
                         </div>
                         if logged {
                             account_menu()
+                        } else {
+                            <a class="button button-secondary" href=(href!(crate::web::login::login_get))>
+                                "Login"
+                            </a>
                         }
                     </div>
                 </header>

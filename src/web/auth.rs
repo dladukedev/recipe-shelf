@@ -57,6 +57,14 @@ pub(super) async fn require_web_user(cx: &Cx) -> topcoat::Result<User> {
         .ok_or_else(|| redirect(href!(crate::web::login::login_get).resolve(cx)).into())
 }
 
+pub(super) async fn recipe_viewer(cx: &Cx) -> topcoat::Result<Option<User>> {
+    let user = current_web_user(cx).await?;
+    if user.is_none() && db(cx, |a| a.require_login()).await.map_err(server_error)? {
+        return Err(redirect(href!(crate::web::login::login_get).resolve(cx)).into());
+    }
+    Ok(user)
+}
+
 pub(super) async fn require_admin(cx: &Cx) -> topcoat::Result<User> {
     ensure_admin(web_user(cx).await?)
 }

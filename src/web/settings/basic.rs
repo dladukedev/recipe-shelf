@@ -108,7 +108,7 @@ pub(in crate::web) async fn settings(cx: &Cx) -> topcoat::Result<impl View> {
                         <p class="muted">
                             (user.username.as_str())
                             " · "
-                            (if user.is_admin { "Administrator" } else { "Member" })
+                            (if user.is_admin { "Admin" } else { "User" })
                         </p>
                     </div>
                     <span class="tag">

@@ -16,6 +16,7 @@ impl App {
           CREATE TABLE IF NOT EXISTS folders(id INTEGER PRIMARY KEY, path TEXT NOT NULL UNIQUE);
           CREATE TABLE IF NOT EXISTS folder_sync(folder_id INTEGER PRIMARY KEY REFERENCES folders(id) ON DELETE CASCADE, report_json TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS export_templates(format TEXT PRIMARY KEY, source TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS recipes(id INTEGER PRIMARY KEY AUTOINCREMENT, folder_id INTEGER NOT NULL REFERENCES folders(id) ON DELETE CASCADE, path TEXT NOT NULL UNIQUE, title TEXT NOT NULL, raw_toml TEXT NOT NULL, data_json TEXT NOT NULL);
           CREATE INDEX IF NOT EXISTS recipes_title ON recipes(title COLLATE NOCASE, id);")?;
         Ok(Self {
